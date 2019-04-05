@@ -1,5 +1,7 @@
 package com.example.googlemapexample;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
@@ -22,6 +24,9 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 
+import java.util.Locale;
+
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
 
@@ -29,6 +34,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
     private final String TAG = "googleMaps";
     private final int ZOOM = 17;
+    private final int LOCATION_UPDATE_INTERVAL = 30000;
     private GoogleMap mMap;
     private LocationResult mLocationUpdate;
     private Location mLocation;
@@ -64,14 +70,28 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void setLocationsCallbacks() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "No permissions for getting  FINE location information!!!");
+            return;
+        }
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "No permissions for getting  COARSE location information!!!");
+            return;
+        }
+
         FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         fusedLocationClient.getLastLocation()
-                .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                .addOnSuccessListener( new OnSuccessListener<Location>() {
                     @Override
                     public void onSuccess(Location location) {
                         // Got last known location. In some rare situations this can be null.
                         if (location != null) {
                             mLocation = location;
+                            Log.d(TAG, String.format(Locale.US, "Last location: %f, %f",
+                                    mLocation.getLatitude(),
+                                    mLocation.getLongitude()));
                         }
                     }
                 });
@@ -85,14 +105,18 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 mLocationUpdate = locationResult;
                 gotoLocation(mLocationUpdate.getLastLocation().getLatitude(),
                         mLocationUpdate.getLastLocation().getLongitude(), ZOOM);
+                Log.d(TAG, String.format(Locale.US, "New location: %f, %f",
+                        mLocationUpdate.getLastLocation().getLatitude(),
+                        mLocationUpdate.getLastLocation().getLongitude()));
             }
         };
 
         // Batch Location Request
         LocationRequest locationRequest = new LocationRequest();
         locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
-        locationRequest.setInterval(2000);
-        locationRequest.setMaxWaitTime(6000);
+        locationRequest.setInterval(LOCATION_UPDATE_INTERVAL);
+        locationRequest.setMaxWaitTime(LOCATION_UPDATE_INTERVAL * 2);
+        Log.d(TAG, String.format(Locale.US,"Set location interval %d ms", LOCATION_UPDATE_INTERVAL));
         fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
     }
 
@@ -120,6 +144,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }
 
         Toast.makeText(this, "On Map Ready", Toast.LENGTH_LONG).show();
+        Log.d(TAG, "On Map Ready");
     }
 
     @Override
