@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -22,29 +21,27 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
 
 import androidx.fragment.app.FragmentActivity;
+
 
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
     private final String TAG = "googleMaps";
+    private final int ZOOM = 17;
     private GoogleMap mMap;
-    private FusedLocationProviderClient fusedLocationClient;
-    private LocationCallback locationCallback;
     private LocationResult mLocationUpdate;
     private Location mLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_maps);
 
         //Toolbar toolbar = findViewById(R.id.toolbar);
         //setSupportActionBar(toolbar);
 
         if (servicesOK()) {
+            setContentView(R.layout.activity_maps);
             setLocationsCallbacks();
             // Obtain the SupportMapFragment and get notified when the map is ready to be used.
             SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -67,7 +64,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void setLocationsCallbacks() {
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         fusedLocationClient.getLastLocation()
                 .addOnSuccessListener(this, new OnSuccessListener<Location>() {
                     @Override
@@ -78,7 +75,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                         }
                     }
                 });
-        locationCallback = new LocationCallback() {
+        LocationCallback locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 if (locationResult == null) {
@@ -87,9 +84,16 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 }
                 mLocationUpdate = locationResult;
                 gotoLocation(mLocationUpdate.getLastLocation().getLatitude(),
-                        mLocationUpdate.getLastLocation().getLongitude(), 17);
+                        mLocationUpdate.getLastLocation().getLongitude(), ZOOM);
             }
         };
+
+        // Batch Location Request
+        LocationRequest locationRequest = new LocationRequest();
+        locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+        locationRequest.setInterval(2000);
+        locationRequest.setMaxWaitTime(6000);
+        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
     }
 
 
@@ -106,17 +110,15 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        if (mLocation != null) {
-            gotoLocation(mLocation.getLatitude(), mLocation.getLongitude(), 17);
-        } else {
-            gotoLocation(15.646596, 73.716619, 10);
+        if (mLocationUpdate != null) {
+            gotoLocation(mLocationUpdate.getLastLocation().getLatitude(),
+                    mLocationUpdate.getLastLocation().getLongitude(), ZOOM);
+            Toast.makeText(this, "On Map Ready: Location Update", Toast.LENGTH_LONG).show();
+        } else if (mLocation != null) {
+            gotoLocation(mLocation.getLatitude(), mLocation.getLongitude(), ZOOM);
+            Toast.makeText(this, "On Map Ready: Last location", Toast.LENGTH_LONG).show();
         }
-        // Batch Location Request
-        LocationRequest locationRequest = new LocationRequest();
-        locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
-        locationRequest.setInterval(2000);
-        locationRequest.setMaxWaitTime(6000);
-        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
+
         Toast.makeText(this, "On Map Ready", Toast.LENGTH_LONG).show();
     }
 
@@ -137,7 +139,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void gotoLocation(double lat, double lng, float zoom) {
-        Toast.makeText(this, "New coordinates arrived", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "Location Update", Toast.LENGTH_LONG).show();
         // Move the camera
         LatLng location = new LatLng(lat, lng);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, zoom));
