@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -24,6 +25,12 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Date;
 import java.util.Locale;
 
 import androidx.core.app.ActivityCompat;
@@ -34,7 +41,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
     private final String TAG = "googleMaps";
     private final int ZOOM = 17;
-    private final int LOCATION_UPDATE_INTERVAL = 30000;
+    private final int LOCATION_UPDATE_INTERVAL = 120000;
     private GoogleMap mMap;
     private LocationResult mLocationUpdate;
     private Location mLocation;
@@ -83,7 +90,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
         FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         fusedLocationClient.getLastLocation()
-                .addOnSuccessListener( new OnSuccessListener<Location>() {
+                .addOnSuccessListener(new OnSuccessListener<Location>() {
                     @Override
                     public void onSuccess(Location location) {
                         // Got last known location. In some rare situations this can be null.
@@ -108,6 +115,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 Log.d(TAG, String.format(Locale.US, "New location: %f, %f",
                         mLocationUpdate.getLastLocation().getLatitude(),
                         mLocationUpdate.getLastLocation().getLongitude()));
+                logLocation(mLocationUpdate);
             }
         };
 
@@ -116,7 +124,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
         locationRequest.setInterval(LOCATION_UPDATE_INTERVAL);
         locationRequest.setMaxWaitTime(LOCATION_UPDATE_INTERVAL * 2);
-        Log.d(TAG, String.format(Locale.US,"Set location interval %d ms", LOCATION_UPDATE_INTERVAL));
+        Log.d(TAG, String.format(Locale.US, "Set location interval %d ms", LOCATION_UPDATE_INTERVAL));
         fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
     }
 
@@ -164,7 +172,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void gotoLocation(double lat, double lng, float zoom) {
-        Toast.makeText(this, "Location Update", Toast.LENGTH_LONG).show();
+        //Toast.makeText(this, "Location Update", Toast.LENGTH_LONG).show();
         // Move the camera
         LatLng location = new LatLng(lat, lng);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, zoom));
@@ -200,5 +208,74 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
 
     public void showCurrentLocation(MenuItem item) {
 
+    }
+
+    private void logLocation(LocationResult location) {
+        final double latitude = location.getLastLocation().getLatitude();
+        final double longitude = location.getLastLocation().getLongitude();
+        final String ts = (new Date()).toString();
+        Log.d(TAG, "Current location is" + location.toString());
+        Date location_measurement_ts = new Date(location.getLastLocation().getTime());
+        storeRecordInFile("locations.txt", String.format(Locale.US,
+                "{\"utcTime\":\"%s\", \"measurementUtcTime\":\"%s\", " +
+                        "\"type\":\"updated\", \"provider\":\"%s\", \"accuracy\":%f, " +
+                        "\"latitude\":%f, \"longitude\":%f},",
+                ts, location_measurement_ts.toString(), location.getLastLocation().getProvider(),
+                location.getLastLocation().getAccuracy(), latitude, longitude));
+
+        storeRecordInFile("locations.txt", String.format(Locale.US,
+                "https://www.google.com/maps/search/?api=1&query=%f,%f",
+                latitude, longitude));
+
+        Log.d(TAG, String.format(Locale.US,
+                "Received location: Latitude:%f, Longitude:%f", latitude, longitude));
+        Log.d(TAG, String.format(Locale.US,
+                "Location link: https://www.google.com/maps/search/?api=1&query=%f,%f",
+                latitude, longitude));
+    }
+
+    private boolean storeRecordInFile(String filename, String msg) {
+        File m_recordFile = prepareLogFile(filename);
+        if (m_recordFile != null) {
+            try {
+                FileOutputStream f = new FileOutputStream(m_recordFile, true);
+                PrintWriter pw = new PrintWriter(f);
+                pw.println(msg);
+                pw.close();
+                f.close();
+            } catch (FileNotFoundException ex) {
+                Log.e(TAG, "Failed to open the file. " + ex);
+                return false;
+            } catch (IOException ex) {
+                Log.e(TAG, "Failed to write the data into the file. " + ex);
+                return false;
+            }
+            return true;
+        } else {
+            Log.e(TAG, "File for storing the data doesn't exist");
+            return false;
+        }
+    }
+
+    private File prepareLogFile(String filename) {
+        if (isExternalStorageWritable()) {
+            File dir = new File(Environment.getExternalStorageDirectory() +
+                    "/Android/data/" + this.getPackageName());
+            if (!dir.exists()) {
+                if (!dir.mkdirs()) {
+                    Log.e(TAG, "Failed to create directory " + dir.getAbsolutePath());
+                    return null;
+                }
+            }
+            return new File(dir, filename);
+        } else {
+            Log.e(TAG, "External storage is not writable. Exiting application");
+            return null;
+        }
+    }
+
+    private boolean isExternalStorageWritable() {
+        String state = Environment.getExternalStorageState();
+        return (Environment.MEDIA_MOUNTED.equals(state));
     }
 }
