@@ -1,8 +1,8 @@
 package com.example.googlemapexample;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
-import android.location.Location;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -12,18 +12,13 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.tasks.OnSuccessListener;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -33,7 +28,6 @@ import java.io.PrintWriter;
 import java.util.Date;
 import java.util.Locale;
 
-import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
 
@@ -41,10 +35,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
     private final String TAG = "googleMaps";
     private final int ZOOM = 17;
-    private final int LOCATION_UPDATE_INTERVAL = 120000;
     private GoogleMap mMap;
-    private LocationResult mLocationUpdate;
-    private Location mLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,17 +44,17 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         //Toolbar toolbar = findViewById(R.id.toolbar);
         //setSupportActionBar(toolbar);
 
-        if (servicesOK()) {
+        if (isGoogleAPIok()) {
             setContentView(R.layout.activity_maps);
-            setLocationsCallbacks();
+
             // Obtain the SupportMapFragment and get notified when the map is ready to be used.
             SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                     .findFragmentById(R.id.map);
+            assert mapFragment != null;
             mapFragment.getMapAsync(this);
         } else {
             setContentView(R.layout.activity_main);
         }
-
 
         /*FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -74,60 +65,39 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 */
+        logString("onCreate");
     }
 
-    private void setLocationsCallbacks() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            Log.e(TAG, "No permissions for getting  FINE location information!!!");
-            return;
-        }
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            Log.e(TAG, "No permissions for getting  COARSE location information!!!");
-            return;
-        }
-
-        FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        fusedLocationClient.getLastLocation()
-                .addOnSuccessListener(new OnSuccessListener<Location>() {
-                    @Override
-                    public void onSuccess(Location location) {
-                        // Got last known location. In some rare situations this can be null.
-                        if (location != null) {
-                            mLocation = location;
-                            Log.d(TAG, String.format(Locale.US, "Last location: %f, %f",
-                                    mLocation.getLatitude(),
-                                    mLocation.getLongitude()));
-                        }
-                    }
-                });
-        LocationCallback locationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                if (locationResult == null) {
-                    mLocationUpdate = null;
-                    return;
-                }
-                mLocationUpdate = locationResult;
-                gotoLocation(mLocationUpdate.getLastLocation().getLatitude(),
-                        mLocationUpdate.getLastLocation().getLongitude(), ZOOM);
-                Log.d(TAG, String.format(Locale.US, "New location: %f, %f",
-                        mLocationUpdate.getLastLocation().getLatitude(),
-                        mLocationUpdate.getLastLocation().getLongitude()));
-                logLocation(mLocationUpdate);
-            }
-        };
-
-        // Batch Location Request
-        LocationRequest locationRequest = new LocationRequest();
-        locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
-        locationRequest.setInterval(LOCATION_UPDATE_INTERVAL);
-        locationRequest.setMaxWaitTime(LOCATION_UPDATE_INTERVAL * 2);
-        Log.d(TAG, String.format(Locale.US, "Set location interval %d ms", LOCATION_UPDATE_INTERVAL));
-        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        logString("onResume");
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        logString("onPause");
+
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        logString("onStart");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        logString("onStop");
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        logString("onSaveInstanceState");
+    }
 
     /**
      * Manipulates the map once available.
@@ -142,17 +112,17 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        if (mLocationUpdate != null) {
+        /*if (mLocationUpdate != null) {
             gotoLocation(mLocationUpdate.getLastLocation().getLatitude(),
                     mLocationUpdate.getLastLocation().getLongitude(), ZOOM);
             Toast.makeText(this, "On Map Ready: Location Update", Toast.LENGTH_LONG).show();
         } else if (mLocation != null) {
             gotoLocation(mLocation.getLatitude(), mLocation.getLongitude(), ZOOM);
             Toast.makeText(this, "On Map Ready: Last location", Toast.LENGTH_LONG).show();
-        }
+        }*/
 
         Toast.makeText(this, "On Map Ready", Toast.LENGTH_LONG).show();
-        Log.d(TAG, "On Map Ready");
+        logString("On Map Ready");
     }
 
     @Override
@@ -181,12 +151,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 .title("Your Position"));
     }
 
-    private LatLng getCurrentLocation() {
-        return new LatLng(mLocationUpdate.getLastLocation().getLatitude(),
-                mLocationUpdate.getLastLocation().getLongitude());
-    }
-
-    public boolean servicesOK() {
+    public boolean isGoogleAPIok() {
         GoogleApiAvailability googleAPI = GoogleApiAvailability.getInstance();
         int isAvailable = googleAPI.isGooglePlayServicesAvailable(this);
 
@@ -206,8 +171,9 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         return true;
     }
 
-    public void showCurrentLocation(MenuItem item) {
-
+    private void logString(String logString) {
+        Log.d(TAG, logString);
+        storeRecordInFile("locations.txt", logString);
     }
 
     private void logLocation(LocationResult location) {
@@ -278,4 +244,14 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         String state = Environment.getExternalStorageState();
         return (Environment.MEDIA_MOUNTED.equals(state));
     }
+
+    class LocationUpdatesReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.d(TAG, "LocationUpdatesReceiver: " + intent.getAction());
+
+        }
+    }
+
 }
