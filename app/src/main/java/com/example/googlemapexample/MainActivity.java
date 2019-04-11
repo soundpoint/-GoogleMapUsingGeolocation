@@ -1,10 +1,15 @@
 package com.example.googlemapexample;
 
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.location.Location;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -29,6 +34,7 @@ import java.util.Date;
 import java.util.Locale;
 
 import androidx.fragment.app.FragmentActivity;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
@@ -36,6 +42,25 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private final String TAG = "googleMaps";
     private final int ZOOM = 17;
     private GoogleMap mMap;
+    private LocationUpdatesService mLocationUpdatesService;
+    private LocationReceiver mLocationReceiver;
+    private Location mLocation;
+
+    // Tracks the bound state of the service.
+    private boolean mBound = false;
+    private final ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            mLocationUpdatesService = ((LocationUpdatesService.LocationBinder) service).getLocationUpdateService();
+            mBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            mLocationUpdatesService = null;
+            mBound = false;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,25 +97,45 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     protected void onResume() {
         super.onResume();
         logString("onResume");
+
+        if (mLocationUpdatesService == null) {
+            mLocationUpdatesService = new LocationUpdatesService();
+        }
+
+        mLocationReceiver = new LocationReceiver();
+
+        // Bind to the service. If the service is in foreground mode, this signals to the service
+        // that since this activity is in the foreground, the service can exit foreground mode.
+        bindService(new Intent(this, LocationUpdatesService.class), mServiceConnection,
+                Context.BIND_AUTO_CREATE);
+        LocalBroadcastManager.getInstance(this).registerReceiver(mLocationReceiver,
+                new IntentFilter(LocationUpdatesService.ACTION_BROADCAST));
     }
 
     @Override
     protected void onPause() {
-        super.onPause();
         logString("onPause");
-
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mLocationReceiver);
+        super.onPause();
     }
 
     @Override
     protected void onStart() {
-        super.onStart();
         logString("onStart");
+        super.onStart();
     }
 
     @Override
     protected void onStop() {
-        super.onStop();
         logString("onStop");
+        if (mBound) {
+            // Unbind from the service. This signals to the service that this activity is no longer
+            // in the foreground, and the service can respond by promoting itself to a foreground
+            // service.
+            unbindService(mServiceConnection);
+            mBound = false;
+        }
+        super.onStop();
     }
 
     @Override
@@ -176,18 +221,18 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         storeRecordInFile("locations.txt", logString);
     }
 
-    private void logLocation(LocationResult location) {
-        final double latitude = location.getLastLocation().getLatitude();
-        final double longitude = location.getLastLocation().getLongitude();
+    private void logLocation(Location location) {
+        final double latitude = location.getLatitude();
+        final double longitude = location.getLongitude();
         final String ts = (new Date()).toString();
         Log.d(TAG, "Current location is" + location.toString());
-        Date location_measurement_ts = new Date(location.getLastLocation().getTime());
+        Date location_measurement_ts = new Date(location.getTime());
         storeRecordInFile("locations.txt", String.format(Locale.US,
                 "{\"utcTime\":\"%s\", \"measurementUtcTime\":\"%s\", " +
                         "\"type\":\"updated\", \"provider\":\"%s\", \"accuracy\":%f, " +
                         "\"latitude\":%f, \"longitude\":%f},",
-                ts, location_measurement_ts.toString(), location.getLastLocation().getProvider(),
-                location.getLastLocation().getAccuracy(), latitude, longitude));
+                ts, location_measurement_ts.toString(), location.getProvider(),
+                location.getAccuracy(), latitude, longitude));
 
         storeRecordInFile("locations.txt", String.format(Locale.US,
                 "https://www.google.com/maps/search/?api=1&query=%f,%f",
@@ -245,12 +290,14 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         return (Environment.MEDIA_MOUNTED.equals(state));
     }
 
-    class LocationUpdatesReceiver extends BroadcastReceiver {
-
+    private class LocationReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.d(TAG, "LocationUpdatesReceiver: " + intent.getAction());
-
+            Location location = intent.getParcelableExtra(LocationUpdatesService.EXTRA_LOCATION);
+            if (location != null) {
+                mLocation = location;
+                logLocation(mLocation);
+            }
         }
     }
 

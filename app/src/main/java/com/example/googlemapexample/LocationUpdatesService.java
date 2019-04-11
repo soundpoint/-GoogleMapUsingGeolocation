@@ -35,11 +35,11 @@ public class LocationUpdatesService extends Service {
 
     public static final String EXTRA_LOCATION = Objects.requireNonNull(LocationUpdatesService.class.getPackage()).getName() + ".location";
     public static final String ACTION_BROADCAST = Objects.requireNonNull(LocationUpdatesService.class.getPackage()).getName() + ".broadcast";
-    public static final String TAG = "Location Update Service";
+    public static final String TAG = "LOCATION_SERVICE";
     public static final String KEY_REQUESTING_LOCATION_UPDATES = "requesting_locaction_updates";
     public static final String LOCATION_UPDATES_NOTIFICATIONS = "location_updates_notifications";
     private static final int NOTIFICATION_ID = 1008;
-    private static final long UPDATE_INTERVAL_IN_MILLISECONDS = 10000;
+    private static long UPDATE_INTERVAL_IN_MILLISECONDS = 120000;
     private static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
             UPDATE_INTERVAL_IN_MILLISECONDS / 2;
     private static final String EXTRA_STARTED_FROM_NOTIFICATION = Objects.requireNonNull(LocationUpdatesService.class.getPackage()).getName() +
@@ -114,7 +114,7 @@ public class LocationUpdatesService extends Service {
         // service. If this method is called due to a configuration change in MainActivity, we
         // do nothing. Otherwise, we make this service a foreground service.
         if (!mChangingConfiguration && requestingLocationUpdates(this)) {
-            Log.i(TAG, "Starting foreground service");
+            Log.d(TAG, "Starting foreground service");
             /*
             // TODO(developer). If targeting O, use the following code.
             if (Build.VERSION.SDK_INT == Build.VERSION_CODES.O) {
@@ -160,6 +160,9 @@ public class LocationUpdatesService extends Service {
         getLastLocation();
 
         mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+
+        // Request location after starting the service
+        requestLocationUpdates();
     }
 
     private Notification getNotification() {
@@ -207,7 +210,7 @@ public class LocationUpdatesService extends Service {
         mLocationRequest = new LocationRequest();
         mLocationRequest.setInterval(UPDATE_INTERVAL_IN_MILLISECONDS);
         mLocationRequest.setFastestInterval(FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
     }
 
     private void getLastLocation() {
@@ -229,7 +232,7 @@ public class LocationUpdatesService extends Service {
     }
 
     public void removeLocationUpdates() {
-        Log.i(TAG, "Removing location updates");
+        Log.d(TAG, "Removing location updates");
         try {
             mFusedLocationClient.removeLocationUpdates(mLocationCallback);
             setRequestingLocationUpdates(this, false);
@@ -241,7 +244,7 @@ public class LocationUpdatesService extends Service {
     }
 
     public void requestLocationUpdates() {
-        Log.i(TAG, "Requesting location updates");
+        Log.d(TAG, "Requesting location updates");
         setRequestingLocationUpdates(this, true);
         startService(new Intent(getApplicationContext(), LocationUpdatesService.class));
         try {

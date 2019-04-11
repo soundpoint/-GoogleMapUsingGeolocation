@@ -37,12 +37,9 @@
 
         <service
             android:name=".LocationUpdatesService"
-            android:description="Background location service getting its
-                        coordinates from GoogleAPI service. Doesn't drain your battery much!"
             android:enabled="true"
             android:exported="false"
-            android:label="LocationUpdatesService">
-        </service>
+            android:label="LocationUpdatesService" />
 
     </application>
 
