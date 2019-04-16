@@ -12,12 +12,13 @@ public class DeviceAdmin extends DeviceAdminReceiver {
     public void onEnabled(Context context, Intent intent) {
         Log.d(TAG, "admin_receiver_status_enabled");
         // admin rights
-        App.getPreferences().edit().putBoolean(App.ADMIN_ENABLED, true).commit(); //App.getPreferences() returns the sharedPreferences
+        //App.getPreferences().edit().putBoolean(App.ADMIN_ENABLED, true).commit(); //App.getPreferences() returns the sharedPreferences
 
     }
 
     @Override
     public CharSequence onDisableRequested(Context context, Intent intent) {
+        Log.d(TAG, "admin_receiver_disable_requested");
         return "admin_receiver_status_disable_warning";
     }
 
@@ -25,6 +26,6 @@ public class DeviceAdmin extends DeviceAdminReceiver {
     public void onDisabled(Context context, Intent intent) {
         Log.d(TAG, "admin_receiver_status_disabled");
         // admin rights removed
-        App.getPreferences().edit().putBoolean(App.ADMIN_ENABLED, false).commit(); //App.getPreferences() returns the sharedPreferences
+        //App.getPreferences().edit().putBoolean(App.ADMIN_ENABLED, false).commit(); //App.getPreferences() returns the sharedPreferences
     }
 }

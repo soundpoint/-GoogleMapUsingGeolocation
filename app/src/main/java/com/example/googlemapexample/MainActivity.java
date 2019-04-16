@@ -1,29 +1,13 @@
 package com.example.googlemapexample;
 
 import android.app.admin.DevicePolicyManager;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.IBinder;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.widget.Toast;
-
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -34,16 +18,13 @@ import java.util.Date;
 import java.util.Locale;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.FragmentActivity;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 
 public class MainActivity extends AppCompatActivity {
+    private static final int REQUEST_CODE = 0;
     private final String TAG = "googleMaps";
     private LocationUpdatesService mLocationUpdatesService;
     private Location mLocation;
-
-    private static final int REQUEST_CODE = 0;
     private DevicePolicyManager mDPM;
     private ComponentName mAdminName;
 
@@ -69,7 +50,8 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
                     intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, mAdminName);
-                    intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Click on Activate button to secure your application.");
+                    intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                            "Click on Activate button to secure your application.");
                     startActivityForResult(intent, REQUEST_CODE);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -83,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        //Check Permission is granted or not
+        // Check Permission is granted or not
         if (requestCode == REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
                 startService(new Intent(this, LocationUpdatesService.class));

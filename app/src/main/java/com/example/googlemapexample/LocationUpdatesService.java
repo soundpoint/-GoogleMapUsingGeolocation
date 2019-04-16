@@ -79,7 +79,7 @@ public class LocationUpdatesService extends Service implements GoogleApiClient.C
 
     @Override
     public void onCreate() {
-        Log.d(TAG, "in onCreate()");
+        logString("in onCreate()");
         super.onCreate();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
@@ -89,8 +89,9 @@ public class LocationUpdatesService extends Service implements GoogleApiClient.C
         buildGoogleApiClient();
     }
 
-    //Google location Api build
+    // Google location Api build
     protected synchronized void buildGoogleApiClient() {
+        logString("buildGoogleApiClient()");
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
@@ -100,6 +101,7 @@ public class LocationUpdatesService extends Service implements GoogleApiClient.C
     }
 
     public void requestUpdate() {
+        logString("requestUpdate()");
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -111,22 +113,25 @@ public class LocationUpdatesService extends Service implements GoogleApiClient.C
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
+        logString("onConnected()");
         createLocationRequest();
     }
 
     @Override
     public void onConnectionSuspended(int i) {
+        logString("onConnectionSuspended()");
         buildGoogleApiClient();
     }
 
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
+        logString("onConnectionFailed()");
         buildGoogleApiClient();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        logString("onStartCommand()");
         mFusedProviderClient = LocationServices.getFusedLocationProviderClient(LocationUpdatesService.this);
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED &&
@@ -135,6 +140,7 @@ public class LocationUpdatesService extends Service implements GoogleApiClient.C
             return START_STICKY;
         }
         mFusedProviderClient.getLastLocation().addOnSuccessListener(location -> {
+            logString("getLastLocation() callback");
             if (location != null) {
                 curLocation = location;
             }
@@ -150,23 +156,27 @@ public class LocationUpdatesService extends Service implements GoogleApiClient.C
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
+        logString("onTaskRemoved()");
         super.onTaskRemoved(rootIntent);
         startService();
     }
 
     @Override
     public void onLowMemory() {
+        logString("onLowMemory()");
         super.onLowMemory();
         startService();
     }
 
     @Override
     public void onDestroy() {
+        logString("onDestroy()");
         super.onDestroy();
         startService();
     }
 
     public void startService() {
+        logString("startService()");
         startService(new Intent(LocationUpdatesService.this, LocationUpdatesService.class));
     }
 
@@ -174,14 +184,14 @@ public class LocationUpdatesService extends Service implements GoogleApiClient.C
         mMyLocationCallback = new MyLocationCallback();
         mLocationRequest = LocationRequest.create();
         mLocationRequest.setInterval(10000);
-        mLocationRequest.setFastestInterval(3000);
+        mLocationRequest.setFastestInterval(30000);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
-        mLocationRequest.setSmallestDisplacement(5.0f);
+        //mLocationRequest.setSmallestDisplacement(5.0f);
 
         requestUpdate();
     }
 
-    //Start Foreground Service and Show Notification to user for Android O and higher Version
+    // Start Foreground Service and Show Notification to user for Android O and higher Version
     private void showNotificationAndStartForegroundService() {
 
         final String CHANNEL_ID = BuildConfig.APPLICATION_ID.concat("_notification_id");
@@ -199,6 +209,11 @@ public class LocationUpdatesService extends Service implements GoogleApiClient.C
                 .setContentIntent(pendingIntent);
 
         startForeground(NOTIFICATION_ID, notificationBuilder.build());
+    }
+
+    private void logString(String logString) {
+        Log.d(TAG, logString);
+        storeRecordInFile("locations.txt", logString);
     }
 
     private void logLocation(Location location) {
@@ -273,7 +288,7 @@ public class LocationUpdatesService extends Service implements GoogleApiClient.C
     public class MyLocationCallback extends LocationCallback {
         @Override
         public void onLocationResult(LocationResult locationResult) {
-            //get your location here
+            // Get your location here
             if (locationResult.getLastLocation() != null) {
                 for (Location location : locationResult.getLocations()) {
                     curLocation = location;
