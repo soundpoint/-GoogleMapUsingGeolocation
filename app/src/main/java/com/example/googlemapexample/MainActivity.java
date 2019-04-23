@@ -35,6 +35,9 @@ import java.util.Locale;
 
 import androidx.fragment.app.FragmentActivity;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
+import androidx.work.WorkRequest;
 
 
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
@@ -45,6 +48,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     private LocationUpdatesService mLocationUpdatesService;
     private LocationReceiver mLocationReceiver;
     private Location mLocation;
+    FileLog mFileLog;
+    private WorkManager mWorkManager;
 
     // Tracks the bound state of the service.
     private boolean mBound = false;
@@ -66,6 +71,8 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        mFileLog = new FileLog(this, "location.txt", TAG);
+        mWorkManager = WorkManager.getInstance();
         //Toolbar toolbar = findViewById(R.id.toolbar);
         //setSupportActionBar(toolbar);
 
@@ -90,15 +97,22 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 */
-        logString("onCreate");
+        mFileLog.logString("onCreate");
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        logString("onResume");
+        mFileLog.logString("onResume");
 
-        if (mLocationUpdatesService == null) {
+        LocationUpdate locationUpdate = new LocationUpdate(this);
+        locationUpdate.startLocationWorker();
+        //mWorkManager.enqueue(OneTimeWorkRequest.from(LocationUpdateWork.class));
+
+        //WorkRequest locationWork = new WorkRequest(LocationUpdateWork.class)
+        //OneTimeWorkRequest o = new OneTimeWorkRequest(LocationUpdateWork.class).build();
+
+        /*if (mLocationUpdatesService == null) {
             mLocationUpdatesService = new LocationUpdatesService();
         }
 
@@ -109,39 +123,39 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         bindService(new Intent(this, LocationUpdatesService.class), mServiceConnection,
                 Context.BIND_AUTO_CREATE);
         LocalBroadcastManager.getInstance(this).registerReceiver(mLocationReceiver,
-                new IntentFilter(LocationUpdatesService.ACTION_BROADCAST));
+                new IntentFilter(LocationUpdatesService.ACTION_BROADCAST));*/
     }
 
     @Override
     protected void onPause() {
-        logString("onPause");
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mLocationReceiver);
+        mFileLog.logString("onPause");
+        //LocalBroadcastManager.getInstance(this).unregisterReceiver(mLocationReceiver);
         super.onPause();
     }
 
     @Override
     protected void onStart() {
-        logString("onStart");
+        mFileLog.logString("onStart");
         super.onStart();
     }
 
     @Override
     protected void onStop() {
-        logString("onStop");
-        if (mBound) {
+        mFileLog.logString("onStop");
+        /*if (mBound) {
             // Unbind from the service. This signals to the service that this activity is no longer
             // in the foreground, and the service can respond by promoting itself to a foreground
             // service.
             unbindService(mServiceConnection);
             mBound = false;
-        }
+        }*/
         super.onStop();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        logString("onSaveInstanceState");
+        mFileLog.logString("onSaveInstanceState");
     }
 
     /**
@@ -167,7 +181,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         }*/
 
         Toast.makeText(this, "On Map Ready", Toast.LENGTH_LONG).show();
-        logString("On Map Ready");
+        mFileLog.logString("On Map Ready");
     }
 
     @Override
@@ -216,87 +230,13 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         return true;
     }
 
-    private void logString(String logString) {
-        Log.d(TAG, logString);
-        storeRecordInFile("locations.txt", logString);
-    }
-
-    private void logLocation(Location location) {
-        final double latitude = location.getLatitude();
-        final double longitude = location.getLongitude();
-        final String ts = (new Date()).toString();
-        Log.d(TAG, "Current location is" + location.toString());
-        Date location_measurement_ts = new Date(location.getTime());
-        storeRecordInFile("locations.txt", String.format(Locale.US,
-                "{\"utcTime\":\"%s\", \"measurementUtcTime\":\"%s\", " +
-                        "\"type\":\"updated\", \"provider\":\"%s\", \"accuracy\":%f, " +
-                        "\"latitude\":%f, \"longitude\":%f},",
-                ts, location_measurement_ts.toString(), location.getProvider(),
-                location.getAccuracy(), latitude, longitude));
-
-        storeRecordInFile("locations.txt", String.format(Locale.US,
-                "https://www.google.com/maps/search/?api=1&query=%f,%f",
-                latitude, longitude));
-
-        Log.d(TAG, String.format(Locale.US,
-                "Received location: Latitude:%f, Longitude:%f", latitude, longitude));
-        Log.d(TAG, String.format(Locale.US,
-                "Location link: https://www.google.com/maps/search/?api=1&query=%f,%f",
-                latitude, longitude));
-    }
-
-    private boolean storeRecordInFile(String filename, String msg) {
-        File m_recordFile = prepareLogFile(filename);
-        if (m_recordFile != null) {
-            try {
-                FileOutputStream f = new FileOutputStream(m_recordFile, true);
-                PrintWriter pw = new PrintWriter(f);
-                pw.println(msg);
-                pw.close();
-                f.close();
-            } catch (FileNotFoundException ex) {
-                Log.e(TAG, "Failed to open the file. " + ex);
-                return false;
-            } catch (IOException ex) {
-                Log.e(TAG, "Failed to write the data into the file. " + ex);
-                return false;
-            }
-            return true;
-        } else {
-            Log.e(TAG, "File for storing the data doesn't exist");
-            return false;
-        }
-    }
-
-    private File prepareLogFile(String filename) {
-        if (isExternalStorageWritable()) {
-            File dir = new File(Environment.getExternalStorageDirectory() +
-                    "/Android/data/" + this.getPackageName());
-            if (!dir.exists()) {
-                if (!dir.mkdirs()) {
-                    Log.e(TAG, "Failed to create directory " + dir.getAbsolutePath());
-                    return null;
-                }
-            }
-            return new File(dir, filename);
-        } else {
-            Log.e(TAG, "External storage is not writable. Exiting application");
-            return null;
-        }
-    }
-
-    private boolean isExternalStorageWritable() {
-        String state = Environment.getExternalStorageState();
-        return (Environment.MEDIA_MOUNTED.equals(state));
-    }
-
     private class LocationReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             Location location = intent.getParcelableExtra(LocationUpdatesService.EXTRA_LOCATION);
             if (location != null) {
                 mLocation = location;
-                logLocation(mLocation);
+                mFileLog.logLocation(mLocation);
             }
         }
     }

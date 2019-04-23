@@ -165,6 +165,21 @@ public class LocationUpdatesService extends Service {
         requestLocationUpdates();
     }
 
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        startNewThread();
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    private void startNewThread() {
+        new Thread() {
+            @Override
+            public void run() {
+                super.run();
+            }
+        };
+    }
+
     private Notification getNotification() {
         Intent intent = new Intent(this, LocationUpdatesService.class);
 
