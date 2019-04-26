@@ -25,8 +25,10 @@ class FileLog {
     }
 
     void logString(String logString) {
+        final String ts = (new Date()).toString();
+
         Log.d(mLogTag, logString);
-        storeRecordInFile(mFileName, logString);
+        storeRecordInFile(mFileName, logString + " " + ts);
     }
 
     void logLocation(Location location) {
