@@ -35,14 +35,14 @@ class FileLog {
         final String ts = (new Date()).toString();
         Log.d(mLogTag, "Current location is" + location.toString());
         Date location_measurement_ts = new Date(location.getTime());
-        storeRecordInFile("locations.txt", String.format(Locale.US,
+        storeRecordInFile(mFileName, String.format(Locale.US,
                 "{\"utcTime\":\"%s\", \"measurementUtcTime\":\"%s\", " +
                         "\"type\":\"updated\", \"provider\":\"%s\", \"accuracy\":%f, " +
                         "\"latitude\":%f, \"longitude\":%f},",
                 ts, location_measurement_ts.toString(), location.getProvider(),
                 location.getAccuracy(), latitude, longitude));
 
-        storeRecordInFile("locations.txt", String.format(Locale.US,
+        storeRecordInFile(mFileName, String.format(Locale.US,
                 "https://www.google.com/maps/search/?api=1&query=%f,%f",
                 latitude, longitude));
 

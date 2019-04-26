@@ -106,7 +106,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         mFileLog.logString("onResume");
 
         LocationUpdate locationUpdate = new LocationUpdate(this);
-        locationUpdate.startLocationWorker();
+        locationUpdate.setLocationCallbacks();
         //mWorkManager.enqueue(OneTimeWorkRequest.from(LocationUpdateWork.class));
 
         //WorkRequest locationWork = new WorkRequest(LocationUpdateWork.class)

@@ -20,6 +20,8 @@ import com.google.android.gms.tasks.Task;
 import java.util.concurrent.TimeUnit;
 
 import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.ExistingWorkPolicy;
+import androidx.work.OneTimeWorkRequest;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
@@ -36,7 +38,7 @@ public class LocationUpdate {
 
     LocationUpdate(final Context context) {
         this.context = context;
-        locationRequestSetup(context);
+        //locationRequestSetup(context);
     }
 
     void locationRequestSetup(final Context context) {
@@ -72,7 +74,7 @@ public class LocationUpdate {
                     // requests here.
                     Log.d(TAG, "Device GPS is on");
 
-                    startLocationWorker();
+                    setLocationCallbacks();
 
                 } catch (ApiException exception) {
                     switch (exception.getStatusCode()) {
@@ -106,10 +108,17 @@ public class LocationUpdate {
     }
 
     void setLocationCallbacks() {
+        stopLocationWorker();
 
+        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(LocationListenableWorker.class)
+                .setInitialDelay(1, TimeUnit.SECONDS).build();
+        WorkManager.getInstance().enqueueUniqueWork(LocationListenableWorker.UNIQUE_WORK_NAME,
+                ExistingWorkPolicy.KEEP, request);
     }
 
     void startLocationWorker() {
+        stopLocationWorker();
+
         PeriodicWorkRequest.Builder locationPeriodicBuilder =
                 new PeriodicWorkRequest.Builder(LocationPeriodicWorker.class, 1, TimeUnit.MINUTES);
 
