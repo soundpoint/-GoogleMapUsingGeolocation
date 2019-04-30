@@ -79,6 +79,9 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         if (isGoogleAPIok()) {
             setContentView(R.layout.activity_maps);
 
+            LocationUpdate locationUpdate = new LocationUpdate(this);
+            locationUpdate.setLocationCallbacks();
+
             // Obtain the SupportMapFragment and get notified when the map is ready to be used.
             SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                     .findFragmentById(R.id.map);
@@ -105,9 +108,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         super.onResume();
         mFileLog.logString("onResume");
 
-        LocationUpdate locationUpdate = new LocationUpdate(this);
-        locationUpdate.setLocationCallbacks();
-        //mWorkManager.enqueue(OneTimeWorkRequest.from(LocationUpdateWork.class));
+          //mWorkManager.enqueue(OneTimeWorkRequest.from(LocationUpdateWork.class));
 
         //WorkRequest locationWork = new WorkRequest(LocationUpdateWork.class)
         //OneTimeWorkRequest o = new OneTimeWorkRequest(LocationUpdateWork.class).build();

@@ -24,7 +24,6 @@ public class LocationListenableWorker extends ListenableWorker {
     static final String UNIQUE_WORK_NAME = "LocationWorker";
     static final String KEY_NEW_LOCATION = "new_location";
     private static final String TAG = "LocationWorker";
-    FusedLocationProviderClient mFusedLocationClient;
     private ResolvableFuture<Result> mFuture;
     private LocationCallback mLocationCallback;
     private FileLog mFileLog;
@@ -45,27 +44,28 @@ public class LocationListenableWorker extends ListenableWorker {
         mFileLog = new FileLog(getApplicationContext(), "listenableWorker.txt", TAG);
         mFileLog.logString("Starting work " + getId());
         mFuture = ResolvableFuture.create();
-        LocationUtils.initLocationUtils(getApplicationContext());
-        LocationUtils.setRequestingLocationUpdates(getApplicationContext(), true);
+        // Instantiate static locations object
+        LocationUtils.getInstance(getApplicationContext());
 
         mLocationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 super.onLocationResult(locationResult);
-                Log.d(TAG, "onLocationResult ");
-                mFileLog.logString("onLocationResult ");
+
+                LocationUtils.removeLocationUpdates(getApplicationContext(), mLocationCallback);
+
+                mFileLog.logString("onLocationResult: Work "  + getId());
                 Location location = locationResult.getLastLocation();
                 if (location != null) {
                     mFileLog.logLocation(location);
                 }
-                Log.d(TAG, "Work " + getId() + " returned: " + location);
 
                 // Rescheduling work
                 OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(LocationListenableWorker.class)
-                        .setInitialDelay(10, TimeUnit.SECONDS)
+                        .setInitialDelay(2, TimeUnit.MINUTES)
                         .build();
                 WorkManager.getInstance().enqueueUniqueWork(LocationListenableWorker.UNIQUE_WORK_NAME,
-                        ExistingWorkPolicy.KEEP, request);
+                        ExistingWorkPolicy.APPEND, request);
                 Log.d(TAG, "Rescheduling work. New ID: " + request.getId());
 
                 // Always set the result as the last operation
@@ -74,12 +74,13 @@ public class LocationListenableWorker extends ListenableWorker {
 
             @Override
             public void onLocationAvailability(LocationAvailability locationAvailability) {
-                mFileLog.logString("onLocationAvailability ");
+                mFileLog.logString("onLocationAvailability: Work " + getId());
+                mFileLog.logString("onLocationAvailability: isLocationAvailable() = "
+                        + locationAvailability.isLocationAvailable());
                 super.onLocationAvailability(locationAvailability);
             }
         };
 
-        LocationUtils.createLocationRequest();
         LocationUtils.requestLocationUpdates(getApplicationContext(), mLocationCallback);
 
         /*LocationUtils.getInstance(getApplicationContext()).
@@ -91,14 +92,6 @@ public class LocationListenableWorker extends ListenableWorker {
                         mFuture.set(Result.failure());
                     }
                 });*/
-
-
-        // Rescheduling work
-        OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(LocationListenableWorker.class)
-                .setInitialDelay(10, TimeUnit.MINUTES)
-                .build();
-        WorkManager.getInstance().enqueueUniqueWork(LocationListenableWorker.UNIQUE_WORK_NAME,
-                ExistingWorkPolicy.KEEP, request);
 
         return mFuture;
     }

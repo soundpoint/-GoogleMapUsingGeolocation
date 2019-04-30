@@ -109,11 +109,16 @@ public class LocationUpdate {
 
     void setLocationCallbacks() {
         stopLocationWorker();
+        stopListanableWorker();
 
         OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(LocationListenableWorker.class)
                 .setInitialDelay(1, TimeUnit.SECONDS).build();
         WorkManager.getInstance().enqueueUniqueWork(LocationListenableWorker.UNIQUE_WORK_NAME,
                 ExistingWorkPolicy.KEEP, request);
+    }
+
+    void stopListanableWorker() {
+        WorkManager.getInstance().cancelAllWorkByTag(LocationListenableWorker.UNIQUE_WORK_NAME);
     }
 
     void startLocationWorker() {

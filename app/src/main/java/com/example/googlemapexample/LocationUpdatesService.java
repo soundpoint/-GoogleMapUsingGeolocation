@@ -145,9 +145,9 @@ public class LocationUpdatesService extends Service {
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
 
                 // Update notification content if running as a foreground service.
-                if (serviceIsRunningInForeground(LocationUpdatesService.this)) {
+                /*if (serviceIsRunningInForeground(LocationUpdatesService.this)) {
                     mNotificationManager.notify(NOTIFICATION_ID, getNotification());
-                }
+                }*/
             }
 
             @Override
@@ -159,7 +159,7 @@ public class LocationUpdatesService extends Service {
         createLocationRequest();
         getLastLocation();
 
-        mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        //mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
         // Request location after starting the service
         requestLocationUpdates();

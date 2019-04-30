@@ -1,33 +1,48 @@
 package com.example.googlemapexample;
 
 import android.content.Context;
-import android.content.Intent;
 import android.os.Looper;
 import android.preference.PreferenceManager;
-import android.util.Log;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
 
 public class LocationUtils {
     final static String LOCATION_UPDATES_REQUESTED = "location-updates-requested";
     final static String KEY_LOCATION_UPDATES_RESULT = "location-update-result";
-    final private static long UPDATE_INTERVAL_IN_MILLISECONDS = 120_000;
+    final private static long UPDATE_INTERVAL_IN_MILLISECONDS = 20_000;
     final private static long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
             UPDATE_INTERVAL_IN_MILLISECONDS / 2;
 
-    static FusedLocationProviderClient mFusedLocationClient;
-    static LocationRequest mLocationRequest;
+    static private FusedLocationProviderClient mFusedLocationClient;
+    static private LocationSettingsRequest mLocationSettingsRequest;
+    static private LocationRequest mLocationRequest;
 
 
-    private static final LocationUtils ourInstance = new LocationUtils();
+    private static volatile LocationUtils ourInstance;
 
     private LocationUtils() {
+        //Prevent form the reflection api.
+        if (ourInstance != null){
+            throw new RuntimeException("Use getInstance() method to get the single instance of this class.");
+        }
     }
 
-    public static LocationUtils getInstance() {
+    public static LocationUtils getInstance(Context context) {
+        if (ourInstance == null) {
+            synchronized (LocationUtils.class) {
+                if (ourInstance == null) {
+                    ourInstance = new LocationUtils();
+                }
+            }
+            // Init Google Location API
+            initLocationUtils(context);
+            setRequestingLocationUpdates(context, true);
+            createLocationRequest();
+        }
         return ourInstance;
     }
 
@@ -38,9 +53,8 @@ public class LocationUtils {
                 .apply();
     }
 
-    static void initLocationUtils(Context context) {
+     static void initLocationUtils(Context context) {
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context);
-
     }
 
     static void createLocationRequest() {
@@ -48,6 +62,11 @@ public class LocationUtils {
         mLocationRequest.setInterval(UPDATE_INTERVAL_IN_MILLISECONDS);
         mLocationRequest.setFastestInterval(FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+
+        /*LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
+                .addLocationRequest(mLocationRequest);
+        mLocationSettingsRequest = builder.build();
+*/
     }
 
     static void requestLocationUpdates(Context context, LocationCallback locationCallback) {
@@ -55,9 +74,19 @@ public class LocationUtils {
         try {
             mFusedLocationClient.requestLocationUpdates(mLocationRequest,
                     locationCallback, Looper.myLooper());
+            setRequestingLocationUpdates(context, true);
         } catch (SecurityException unlikely) {
             setRequestingLocationUpdates(context, false);
-          //  Log.e(TAG, "Lost location permission. Could not request updates. " + unlikely);
         }
     }
+
+    static void removeLocationUpdates(Context context, LocationCallback locationCallback) {
+        try {
+            mFusedLocationClient.removeLocationUpdates(locationCallback);
+            setRequestingLocationUpdates(context, false);
+        } catch (SecurityException unlikely) {
+            setRequestingLocationUpdates(context, true);
+        }
+    }
+
 }
