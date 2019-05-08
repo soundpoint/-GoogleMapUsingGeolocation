@@ -12,7 +12,6 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.WorkerParameters;
 
-import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationAvailability;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationResult;
@@ -22,11 +21,10 @@ import java.util.concurrent.TimeUnit;
 
 public class LocationListenableWorker extends ListenableWorker {
     static final String UNIQUE_WORK_NAME = "LocationWorker";
-    static final String KEY_NEW_LOCATION = "new_location";
     private static final String TAG = "LocationWorker";
     private ResolvableFuture<Result> mFuture;
     private LocationCallback mLocationCallback;
-    private FileLog mFileLog;
+    //private FileLog mFileLog;
 
     /**
      * @param appContext   The application {@link Context}
@@ -41,8 +39,8 @@ public class LocationListenableWorker extends ListenableWorker {
     public ListenableFuture<Result> startWork() {
         Log.d(TAG, "Starting work " + getId());
         // Starting log
-        mFileLog = new FileLog(getApplicationContext(), "listenableWorker.txt", TAG);
-        mFileLog.logString("Starting work " + getId());
+        //mFileLog = new FileLog(getApplicationContext(), "listenableWorker.txt", TAG);
+        //mFileLog.logString("Starting work " + getId());
         mFuture = ResolvableFuture.create();
         // Instantiate static locations object
         LocationUtils.getInstance(getApplicationContext());
@@ -54,29 +52,31 @@ public class LocationListenableWorker extends ListenableWorker {
 
                 LocationUtils.removeLocationUpdates(getApplicationContext(), mLocationCallback);
 
-                mFileLog.logString("onLocationResult: Work "  + getId());
+                //mFileLog.logString("onLocationResult: Work "  + getId());
                 Location location = locationResult.getLastLocation();
                 if (location != null) {
-                    mFileLog.logLocation(location);
+                    //mFileLog.logLocation(location);
+                    LocationListener.getInstance(getApplicationContext()).update(location);
                 }
 
-                // Rescheduling work
-                OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(LocationListenableWorker.class)
-                        .setInitialDelay(2, TimeUnit.MINUTES)
-                        .build();
-                WorkManager.getInstance().enqueueUniqueWork(LocationListenableWorker.UNIQUE_WORK_NAME,
-                        ExistingWorkPolicy.APPEND, request);
-                Log.d(TAG, "Rescheduling work. New ID: " + request.getId());
-
+                if (true) {
+                    // Rescheduling work
+                    OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(LocationListenableWorker.class)
+                            .setInitialDelay(2, TimeUnit.MINUTES)
+                            .build();
+                    WorkManager.getInstance().enqueueUniqueWork(LocationListenableWorker.UNIQUE_WORK_NAME,
+                            ExistingWorkPolicy.APPEND, request);
+                    Log.d(TAG, "Rescheduling work. New ID: " + request.getId());
+                }
                 // Always set the result as the last operation
                 mFuture.set(Result.success());
             }
 
             @Override
             public void onLocationAvailability(LocationAvailability locationAvailability) {
-                mFileLog.logString("onLocationAvailability: Work " + getId());
-                mFileLog.logString("onLocationAvailability: isLocationAvailable() = "
-                        + locationAvailability.isLocationAvailable());
+                //mFileLog.logString("onLocationAvailability: Work " + getId());
+                //mFileLog.logString("onLocationAvailability: isLocationAvailable() = "
+                //       + locationAvailability.isLocationAvailable());
                 super.onLocationAvailability(locationAvailability);
             }
         };

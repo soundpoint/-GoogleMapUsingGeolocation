@@ -26,7 +26,7 @@ public class LocationUtils {
 
     private LocationUtils() {
         //Prevent form the reflection api.
-        if (ourInstance != null){
+        if (ourInstance != null) {
             throw new RuntimeException("Use getInstance() method to get the single instance of this class.");
         }
     }
@@ -53,7 +53,7 @@ public class LocationUtils {
                 .apply();
     }
 
-     static void initLocationUtils(Context context) {
+    static void initLocationUtils(Context context) {
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context);
     }
 

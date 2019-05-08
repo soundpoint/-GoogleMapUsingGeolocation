@@ -3,9 +3,22 @@ package com.example.googlemapexample;
 import android.app.Activity;
 import android.content.Context;
 import android.content.IntentSender;
+import android.location.Location;
 import android.location.LocationManager;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.Observer;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.ExistingWorkPolicy;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkInfo;
+import androidx.work.WorkManager;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.LocationRequest;
@@ -16,29 +29,45 @@ import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import androidx.work.ExistingPeriodicWorkPolicy;
-import androidx.work.ExistingWorkPolicy;
-import androidx.work.OneTimeWorkRequest;
-import androidx.work.PeriodicWorkRequest;
-import androidx.work.WorkManager;
-
-public class LocationUpdate {
+public class LocationGoogleServices {
     final private static String TAG = "LOCATION";
     private final static String WORKER_TAG = "WORKER_TAG";
+    private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
+    private final int REQUEST_CHECK_SETTINGS = 6003;
     private Context context;
     private SettingsClient mSettingsClient;
     private LocationSettingsRequest mLocationSettingsRequest;
     private LocationManager locationManager;
     private LocationRequest locationRequest;
-    private final int REQUEST_CHECK_SETTINGS = 6003;
+    private FileLog mFileLog;
 
-
-    LocationUpdate(final Context context) {
+    LocationGoogleServices(final Context context) {
         this.context = context;
         //locationRequestSetup(context);
+        mFileLog = new FileLog(context, "listenableWorker.txt", TAG);
+        subscribeToLocationUpdate();
+    }
+
+    private void subscribeToLocationUpdate() {
+        LocationListener.getInstance(context).observeForever(new Observer<Location>() {
+            @Override
+            public void onChanged(@Nullable Location location) {
+                Log.d(TAG, "onChanged: location updated " + location);
+                // do your stuff
+
+                mFileLog.logLocation(location);
+            }
+        });
+    }
+
+    void stop() {
+
     }
 
     void locationRequestSetup(final Context context) {
@@ -102,19 +131,59 @@ public class LocationUpdate {
                             Log.e(TAG, "Couldn't change GPS setting. Please set in on user!");
                             break;
                     }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (ExecutionException e) {
+                    e.printStackTrace();
                 }
             }
         });
     }
 
-    void setLocationCallbacks() {
+    public boolean isGoogleAPIok() {
+        GoogleApiAvailability googleAPI = GoogleApiAvailability.getInstance();
+        int isAvailable = googleAPI.isGooglePlayServicesAvailable(context);
+
+        if (isAvailable != ConnectionResult.SUCCESS) {
+            if (googleAPI.isUserResolvableError(isAvailable)) {
+                googleAPI.getErrorDialog((Activity) context, isAvailable,
+                        PLAY_SERVICES_RESOLUTION_REQUEST).show();
+            } else {
+                Log.i(TAG, "This device is not supported.");
+            }
+            return false;
+        }
+        return true;
+    }
+
+    void workInfo() throws ExecutionException, InterruptedException {
+        WorkManager wm = WorkManager.getInstance();
+        ListenableFuture<List<WorkInfo>> future = wm.getWorkInfosForUniqueWork(LocationListenableWorker.UNIQUE_WORK_NAME);
+        //ListenableFuture<List<WorkInfo>> future = wm.getWorkInfosByTag(LocationListenableWorker.UNIQUE_WORK_NAME);
+        List<WorkInfo> list = future.get();
+        int cnt = 0;
+        for (WorkInfo workInfo : list) {
+            WorkInfo.State state = workInfo.getState();
+            if (state == WorkInfo.State.RUNNING || state == WorkInfo.State.ENQUEUED) {
+                // find current process
+                Log.d("", "tt");
+            }
+            cnt++;
+        }
+
+        Log.d(TAG, "WorkInfos");
+
+    }
+
+    void setLocationCallbacks() throws ExecutionException, InterruptedException {
+        workInfo();
         stopLocationWorker();
         stopListanableWorker();
 
         OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(LocationListenableWorker.class)
                 .setInitialDelay(1, TimeUnit.SECONDS).build();
         WorkManager.getInstance().enqueueUniqueWork(LocationListenableWorker.UNIQUE_WORK_NAME,
-                ExistingWorkPolicy.KEEP, request);
+                ExistingWorkPolicy.REPLACE, request);
     }
 
     void stopListanableWorker() {
@@ -139,4 +208,3 @@ public class LocationUpdate {
     }
 
 }
-

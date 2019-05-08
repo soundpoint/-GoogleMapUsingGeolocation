@@ -4,20 +4,22 @@ import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.location.Location;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
+import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.Observer;
+import androidx.work.WorkManager;
+
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -25,30 +27,15 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.Date;
-import java.util.Locale;
-
-import androidx.fragment.app.FragmentActivity;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.work.OneTimeWorkRequest;
-import androidx.work.WorkManager;
-import androidx.work.WorkRequest;
-
+import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends FragmentActivity implements OnMapReadyCallback {
-    private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
     private final String TAG = "googleMaps";
     private final int ZOOM = 17;
+    FileLog mFileLog;
     private GoogleMap mMap;
     private LocationUpdatesService mLocationUpdatesService;
-    private LocationReceiver mLocationReceiver;
     private Location mLocation;
-    FileLog mFileLog;
     private WorkManager mWorkManager;
 
     // Tracks the bound state of the service.
@@ -76,11 +63,18 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         //Toolbar toolbar = findViewById(R.id.toolbar);
         //setSupportActionBar(toolbar);
 
-        if (isGoogleAPIok()) {
+        LocationGoogleServices locationGoogleServices = new LocationGoogleServices(this);
+
+        if (locationGoogleServices.isGoogleAPIok()) {
             setContentView(R.layout.activity_maps);
 
-            LocationUpdate locationUpdate = new LocationUpdate(this);
-            locationUpdate.setLocationCallbacks();
+            try {
+                locationGoogleServices.setLocationCallbacks();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
 
             // Obtain the SupportMapFragment and get notified when the map is ready to be used.
             SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -91,15 +85,6 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             setContentView(R.layout.activity_main);
         }
 
-        /*FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
-*/
         mFileLog.logString("onCreate");
     }
 
@@ -108,7 +93,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
         super.onResume();
         mFileLog.logString("onResume");
 
-          //mWorkManager.enqueue(OneTimeWorkRequest.from(LocationUpdateWork.class));
+        //mWorkManager.enqueue(OneTimeWorkRequest.from(LocationUpdateWork.class));
 
         //WorkRequest locationWork = new WorkRequest(LocationUpdateWork.class)
         //OneTimeWorkRequest o = new OneTimeWorkRequest(LocationUpdateWork.class).build();
@@ -151,6 +136,12 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             mBound = false;
         }*/
         super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        mFileLog.logString("onDestroy");
+        super.onDestroy();
     }
 
     @Override
@@ -211,27 +202,7 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
                 .title("Your Position"));
     }
 
-    public boolean isGoogleAPIok() {
-        GoogleApiAvailability googleAPI = GoogleApiAvailability.getInstance();
-        int isAvailable = googleAPI.isGooglePlayServicesAvailable(this);
-
-        if (isAvailable != ConnectionResult.SUCCESS) {
-            if (googleAPI.isUserResolvableError(isAvailable)) {
-                googleAPI.getErrorDialog(this, isAvailable,
-                        PLAY_SERVICES_RESOLUTION_REQUEST).show();
-            } else {
-                Toast.makeText(this, "Can't connect to mapping services",
-                        Toast.LENGTH_LONG).show();
-                Log.i(TAG, "This device is not supported.");
-                finish();
-            }
-            return false;
-        }
-
-        return true;
-    }
-
-    private class LocationReceiver extends BroadcastReceiver {
+/*    private class LocationReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             Location location = intent.getParcelableExtra(LocationUpdatesService.EXTRA_LOCATION);
@@ -241,5 +212,5 @@ public class MainActivity extends FragmentActivity implements OnMapReadyCallback
             }
         }
     }
-
+*/
 }
